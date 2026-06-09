@@ -45,6 +45,7 @@ type Relations struct {
 }
 
 type BandInfo struct {
+	ID           int
 	Name         string
 	CreationDate int
 	Image        string

@@ -74,6 +74,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		band := BandInfo{
+			ID:           artist.ID,
 			Name:         artist.Name,
 			CreationDate: artist.CreationDate,
 			Image:        artist.Image,
@@ -88,7 +89,14 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute the parsed template, passing the fetched artist data to it
-	err = output.Execute(w, bands)
+	data := struct {
+		Title   string
+		Artists []BandInfo
+	}{
+		Title:   "Groupie Tracker",
+		Artists: bands,
+	}
+	err = output.Execute(w, data)
 	// Handle any errors that occur during template execution
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
