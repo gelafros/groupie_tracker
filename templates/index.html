@@ -1,20 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{.Title}}</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
   <header class="site-header">
     <h1 class="site-title">Groupie Tracker</h1>
   </header>
   <main class="home-main">
     <section class="search-section">
-      <input class="search-input" type="text" id="searchInput" aria-label="Search artists" placeholder="Search artists…" autocomplete="off">
+      <input class="search-input" type="text" id="searchInput" aria-label="Search artists" placeholder="Search artists…"
+        autocomplete="off">
       <div class="search-results" id="searchResults" aria-live="polite"></div>
     </section>
+    <form method="GET" action="/" class="filters-form">
+      <h2>Filters</h2>
+      <!-- filter creation date -->
+      <div class="filter-group">
+        <label>Creation Date:</label>
+        <div class="range-inputs">
+          <input type="number" name="creationDateMin" placeholder="Min Year (e.g. 1950)" min="1900" max="2026">
+          <span>to</span>
+          <input type="number" name="creationDateMax" placeholder="Max Year (e.g. 2026)" min="1900" max="2026">
+        </div>
+      </div>
+      <!-- filter first album year -->
+      <div class="filter-group">
+        <label>First Album Year:</label>
+        <div class="range-inputs">
+          <input type="number" name="firstAlbumMin" placeholder="Min Year (e.g. 1960)" min="1900" max="2026">
+          <span>to</span>
+          <input type="number" name="firstAlbumMax" placeholder="Max Year (e.g. 2026)" min="1900" max="2026">
+        </div>
+      </div>
+      <!-- filter number of members -->
+      <div class="filter-group">
+        <label>Number of Members:</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="members" value="1"> 1</label>
+          <label><input type="checkbox" name="members" value="2"> 2</label>
+          <label><input type="checkbox" name="members" value="3"> 3</label>
+          <label><input type="checkbox" name="members" value="4"> 4</label>
+          <label><input type="checkbox" name="members" value="5"> 5</label>
+          <label><input type="checkbox" name="members" value="6"> 6</label>
+          <label><input type="checkbox" name="members" value="7"> 7</label>
+          <label><input type="checkbox" name="members" value="8"> 8</label>
+        </div>
+      </div>
+      <!-- filter concert location -->
+      <div class="filter-group">
+        <label for="locationInput">Concert Location:</label>
+        <input type="text" id="locationInput" name="location" placeholder="e.g. London, Seattle...">
+      </div>
+      <!-- buttons submit and reset -->
+      <div class="filter-actions">
+        <button type="submit" class="btn-submit">Apply Filters</button>
+        <a href="/" class="btn-reset">Reset</a>
+      </div>
+    </form>
     <section class="artists-grid" id="artistsGrid">
       {{range .Artists}}
       <a class="artist-card" href="/artist?id={{.ID}}">
@@ -31,4 +79,5 @@
   </main>
   <script src="/static/javascript/js.js"></script>
 </body>
+
 </html>

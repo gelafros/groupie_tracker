@@ -251,6 +251,7 @@ img {
   font-size: 0.95rem;
   font-weight: 600;
   margin-bottom: 0.4rem;
+  text-transform: capitalize;
 }
 
 .relation-dates {

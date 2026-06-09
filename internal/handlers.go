@@ -31,6 +31,40 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		renderError(w, http.StatusNotFound, "Not Found", "The page you are looking for does not exist.")
 		return
 	}
+	// get query params
+	queryParams := r.URL.Query()
+	creationMinStr := queryParams.Get("creationDateMin")
+	creationMaxStr := queryParams.Get("creationDateMax")
+	firstAlbumMinStr := queryParams.Get("firstAlbumMin")
+	firstAlbumMaxStr := queryParams.Get("firstAlbumMax")
+	membersParams := queryParams["members"]
+	locationParam := strings.ToLower(strings.TrimSpace(queryParams.Get("location")))
+	// default values for range filters
+	creationMin := 0
+	creationMax := 9999
+	firstAlbumMin := 0
+	firstAlbumMax := 9999
+	// convert strings to integers
+	if creationMinStr != "" {
+		if val, err := strconv.Atoi(creationMinStr); err == nil {
+			creationMin = val
+		}
+	}
+	if creationMaxStr != "" {
+		if val, err := strconv.Atoi(creationMaxStr); err == nil {
+			creationMax = val
+		}
+	}
+	if firstAlbumMinStr != "" {
+		if val, err := strconv.Atoi(firstAlbumMinStr); err == nil {
+			firstAlbumMin = val
+		}
+	}
+	if firstAlbumMaxStr != "" {
+		if val, err := strconv.Atoi(firstAlbumMaxStr); err == nil {
+			firstAlbumMax = val
+		}
+	}
 
 	// Parse the HTML template file
 	output, err := template.ParseFiles("templates/index.html")
@@ -68,6 +102,51 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	var bands []BandInfo
 
 	for i, artist := range artists {
+		// 1. creation date filter
+		if artist.CreationDate < creationMin || artist.CreationDate > creationMax {
+			continue
+		}
+		// 2. first album filter
+		albumParts := strings.Split(artist.FirstAlbum, "-")
+		if len(albumParts) == 3 {
+			albumYear, err := strconv.Atoi(albumParts[2])
+			if err == nil {
+				if albumYear < firstAlbumMin || albumYear > firstAlbumMax {
+					continue
+				}
+			}
+		}
+		// 3. filter members
+		if len(membersParams) > 0 {
+			matchedMembers := false
+			memberCountStr := strconv.Itoa(len(artist.Members))
+			for _, m := range membersParams {
+				if m == memberCountStr {
+					matchedMembers = true
+					break
+				}
+			}
+			if !matchedMembers {
+				continue
+			}
+		}
+
+		// 4. filter location
+		if locationParam != "" {
+			matchedLocation := false
+			if i < len(locations.Index) {
+				for _, loc := range locations.Index[i].Locations {
+					locClean := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(loc, "_", " "), "-", " "))
+					if strings.Contains(locClean, locationParam) {
+						matchedLocation = true
+						break
+					}
+				}
+			}
+			if !matchedLocation {
+				continue
+			}
+		}
 
 		var formattedLocations []string
 

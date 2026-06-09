@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{.Title}}</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
   <header class="site-header">
     <h1 class="site-title">Groupie Tracker</h1>
   </header>
   <main class="detail-main">
     <a href="/" class="back-link">← Back to Artists</a>
-    
+
     <div class="detail-hero">
       <img class="hero-image" src="{{.Artist.Image}}" alt="{{.Artist.Name}}">
       <div class="hero-info">
@@ -20,7 +22,7 @@
         <p class="hero-meta">Started in {{.Artist.CreationDate}} • First Album: {{.Artist.FirstAlbum}}</p>
       </div>
     </div>
-    
+
     <section>
       <h2 class="section-title">Members</h2>
       <ul class="members-list">
@@ -29,9 +31,9 @@
         {{end}}
       </ul>
     </section>
-    
+
     <section>
-      <h2 class="section-title">Concerts & Locations</h2>
+      <h2 class="section-title">Concert Locations</h2>
       <div>
         {{range $loc, $dates := .Artist.Relations}}
         <div class="relation-item">
@@ -45,4 +47,5 @@
     </section>
   </main>
 </body>
+
 </html>
