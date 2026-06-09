@@ -18,6 +18,8 @@ func StartServer() {
 
 	// Register the homeHandler function to handle requests to the root URL ("/")
 	handler.HandleFunc("/", homeHandler)
+	// Register the artistHandler to display individual artists
+	handler.HandleFunc("/artist", artistHandler)
 	// Handle the css call
 	fileserver := http.FileServer(http.Dir("./static"))
 	handler.Handle("/static/", http.StripPrefix("/static", fileserver))

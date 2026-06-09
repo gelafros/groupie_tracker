@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{.Title}} — Groupie Tracker</title>
+  <title>{{.Title}}</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
   <header class="site-header">
-    <a class="back-link" href="/">← All Artists</a>
+    <h1 class="site-title">Groupie Tracker</h1>
   </header>
   <main class="error-main">
-    <p class="error-code">{{.Code}}</p>
-    <h1 class="error-title">{{.Title}}</h1>
+    <h1 class="error-code">{{.Status}}</h1>
+    <h2 class="error-title">{{.Title}}</h2>
     <p class="error-message">{{.Message}}</p>
-    <p class="error-tagline">This track skipped a beat — let's get you back to the music.</p>
-    <a class="error-home-link" href="/">Back to all artists</a>
+    <p class="error-tagline">Something went wrong!</p>
+    <a href="/" class="error-home-link">Go Home</a>
   </main>
 </body>
 </html>

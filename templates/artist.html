@@ -3,24 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{.Title}} — Groupie Tracker</title>
+  <title>{{.Title}}</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
   <header class="site-header">
-    <a class="back-link" href="/">← All Artists</a>
+    <h1 class="site-title">Groupie Tracker</h1>
   </header>
   <main class="detail-main">
-    <section class="detail-hero">
+    <a href="/" class="back-link">← Back to Artists</a>
+    
+    <div class="detail-hero">
       <img class="hero-image" src="{{.Artist.Image}}" alt="{{.Artist.Name}}">
       <div class="hero-info">
         <h1 class="hero-name">{{.Artist.Name}}</h1>
-        <p class="hero-meta">First Album: {{.Artist.FirstAlbum}}</p>
-        <p class="hero-meta">Founded: {{.Artist.CreationDate}}</p>
+        <p class="hero-meta">Started in {{.Artist.CreationDate}} • First Album: {{.Artist.FirstAlbum}}</p>
       </div>
-    </section>
-
-    <section class="detail-members">
+    </div>
+    
+    <section>
       <h2 class="section-title">Members</h2>
       <ul class="members-list">
         {{range .Artist.Members}}
@@ -28,21 +29,19 @@
         {{end}}
       </ul>
     </section>
-
-    <section class="detail-relations">
-      <h2 class="section-title">Concert Locations</h2>
-      {{range .Artist.DatesByLocation}}
-      <div class="relation-item">
-        <h3 class="relation-location">{{.Location}}</h3>
-        <ul class="relation-dates">
-          {{range .Dates}}
-          <li>{{.}}</li>
-          {{end}}
-        </ul>
+    
+    <section>
+      <h2 class="section-title">Concerts & Locations</h2>
+      <div>
+        {{range $loc, $dates := .Artist.Relations}}
+        <div class="relation-item">
+          <h3 class="relation-location">{{$loc}}</h3>
+          <ul class="relation-dates">
+            {{range $dates}}<li>{{.}}</li>{{end}}
+          </ul>
+        </div>
+        {{end}}
       </div>
-      {{else}}
-      <p class="empty-state">No location data available.</p>
-      {{end}}
     </section>
   </main>
 </body>
