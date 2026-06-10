@@ -65,6 +65,8 @@ func StartServer() {
 	handler.HandleFunc("/", homeHandler)
 	// Register the artistHandler to display individual artists
 	handler.HandleFunc("/artist", artistHandler)
+	// Register the search API for client-side asynchronous filtering
+	handler.HandleFunc("/api/search", searchHandler)
 	// Handle the css call
 	fileserver := http.FileServer(http.Dir("./static"))
 	handler.Handle("/static/", http.StripPrefix("/static", fileserver))

@@ -1,6 +1,7 @@
 const searchInput = document.getElementById("searchInput");
 const searchResults = document.getElementById("searchResults");
 const artistsGrid = document.getElementById("artistsGrid");
+const filtersForm = document.querySelector(".filters-form");
 
 if (searchInput && searchResults && artistsGrid) {
   let debounceTimer;
@@ -9,16 +10,42 @@ if (searchInput && searchResults && artistsGrid) {
   searchInput.addEventListener("input", () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      fetchArtists(searchInput.value.trim());
+      fetchArtists();
     }, 250);
   });
 }
 
-async function fetchArtists(query) {
-  const params = new URLSearchParams({ q: query });
+if (filtersForm) {
+  // Intercept the filter form submission to stop the page reload
+  filtersForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetchArtists();
+  });
+
+  // Intercept the reset button to clear everything asynchronously
+  const resetBtn = filtersForm.querySelector(".btn-reset");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", (e) => {
+      e.preventDefault(); // Prevent standard link navigation
+      filtersForm.reset();
+      if (searchInput) searchInput.value = "";
+      fetchArtists();
+    });
+  }
+}
+
+async function fetchArtists() {
+  // Grab all the checked boxes and typed years directly from the form
+  const params = filtersForm ? new URLSearchParams(new FormData(filtersForm)) : new URLSearchParams();
+
+  // Add the search query to the params if it exists
+  const query = searchInput ? searchInput.value.trim() : "";
+  if (query) {
+    params.set("q", query);
+  }
 
   try {
-    searchResults.textContent = "Searching...";
+    searchResults.textContent = "Loading...";
 
     // Task 08: call the backend search endpoint without reloading the page.
     const response = await fetch(`/api/search?${params.toString()}`);

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"encoding/json"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -211,5 +212,86 @@ func artistHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := tmpl.Execute(w, data); err != nil {
 		renderError(w, http.StatusInternalServerError, "Internal Server Error", "Template execution failed.")
+	}
+}
+
+// searchHandler handles asynchronous requests for filtering and searching.
+// It returns a JSON array of artists matching all selected criteria.
+func searchHandler(w http.ResponseWriter, r *http.Request) {
+	// Parse standard filters (year ranges, members, locations)
+	filters := ParseFilters(r)
+	
+	// Grab the search query for the artist name
+	query := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+
+	var filteredArtists []Artist
+
+	for _, artist := range cachedArtists {
+		// Apply name search
+		if query != "" && !strings.Contains(strings.ToLower(artist.Name), query) {
+			continue
+		}
+
+		// 1. Filter by Creation Date
+		if artist.CreationDate < filters.CreationMin || artist.CreationDate > filters.CreationMax {
+			continue
+		}
+		
+		// 2. Filter by First Album Year (Format: DD-MM-YYYY)
+		albumParts := strings.Split(artist.FirstAlbum, "-")
+		if len(albumParts) == 3 {
+			albumYear, err := strconv.Atoi(albumParts[2])
+			if err == nil {
+				if albumYear < filters.FirstAlbumMin || albumYear > filters.FirstAlbumMax {
+					continue
+				}
+			}
+		}
+		
+		// 3. Filter by Number of Members
+		if len(filters.Members) > 0 {
+			matchedMembers := false
+			memberCountStr := strconv.Itoa(len(artist.Members))
+			for _, m := range filters.Members {
+				if m == memberCountStr {
+					matchedMembers = true
+					break
+				}
+			}
+			if !matchedMembers {
+				continue
+			}
+		}
+
+		// 4. Filter by Concert Location
+		artistLocs, locExists := cachedLocationMap[artist.ID]
+		if filters.Location != "" {
+			matchedLocation := false
+			if locExists {
+				for _, loc := range artistLocs.Locations {
+					locClean := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(loc, "_", " "), "-", " "))
+					if strings.Contains(locClean, filters.Location) {
+						matchedLocation = true
+						break
+					}
+				}
+			}
+			if !matchedLocation {
+				continue
+			}
+		}
+
+		filteredArtists = append(filteredArtists, artist)
+	}
+
+	// Ensure an empty slice is returned as [] instead of null in JSON
+	if filteredArtists == nil {
+		filteredArtists = []Artist{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(filteredArtists); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
 	}
 }
