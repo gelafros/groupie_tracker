@@ -16,7 +16,7 @@ func ParseFilters(r *http.Request) FilterParams {
 	firstAlbumMinStr := queryParams.Get("firstAlbumMin")
 	firstAlbumMaxStr := queryParams.Get("firstAlbumMax")
 	membersParams := queryParams["members"]
-	locationParam := strings.ToLower(strings.TrimSpace(queryParams.Get("location")))
+	locationParam := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(queryParams.Get("location"))), ",", "")
 
 	// Initialize the filters struct with wide default ranges to include all artists by default
 	filters := FilterParams{
