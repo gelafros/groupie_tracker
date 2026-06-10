@@ -55,3 +55,13 @@ type BandInfo struct {
 	Members      []string
 	FirstAlbum   string
 }
+
+// FilterParams holds all the parsed criteria for filtering artists.
+type FilterParams struct {
+	CreationMin   int
+	CreationMax   int
+	FirstAlbumMin int
+	FirstAlbumMax int
+	Members       []string
+	Location      string
+}

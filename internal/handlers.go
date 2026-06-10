@@ -31,48 +31,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		renderError(w, http.StatusNotFound, "Not Found", "The page you are looking for does not exist.")
 		return
 	}
-	// get query params
-	queryParams := r.URL.Query()
-	creationMinStr := queryParams.Get("creationDateMin")
-	creationMaxStr := queryParams.Get("creationDateMax")
-	firstAlbumMinStr := queryParams.Get("firstAlbumMin")
-	firstAlbumMaxStr := queryParams.Get("firstAlbumMax")
-	membersParams := queryParams["members"]
-	locationParam := strings.ToLower(strings.TrimSpace(queryParams.Get("location")))
-	// default values for range filters
-	creationMin := 0
-	creationMax := 9999
-	firstAlbumMin := 0
-	firstAlbumMax := 9999
-	// convert strings to integers
-	if creationMinStr != "" {
-		if val, err := strconv.Atoi(creationMinStr); err == nil {
-			creationMin = val
-		}
-	}
-	if creationMaxStr != "" {
-		if val, err := strconv.Atoi(creationMaxStr); err == nil {
-			creationMax = val
-		}
-	}
-	if firstAlbumMinStr != "" {
-		if val, err := strconv.Atoi(firstAlbumMinStr); err == nil {
-			firstAlbumMin = val
-		}
-	}
-	if firstAlbumMaxStr != "" {
-		if val, err := strconv.Atoi(firstAlbumMaxStr); err == nil {
-			firstAlbumMax = val
-		}
-	}
 
-	// Parse the HTML template file
-	output, err := template.ParseFiles("templates/index.html")
-	// Handle any errors that occur during parsing (e.g., file not found)
-	if err != nil {
-		renderError(w, http.StatusInternalServerError, "Internal Server Error", "Could not parse template.")
-		return
-	}
 	// Fetch the artist data from the external API
 	artists, err := FetchArtists()
 	// Handle any errors that occur during the API fetch
@@ -99,11 +58,29 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create lookup maps by ID for robust data matching
+	locationMap := make(map[int]Locations)
+	for _, loc := range locations.Index {
+		locationMap[loc.ID] = loc
+	}
+
+	datesMap := make(map[int]Dates)
+	for _, d := range dates.Index {
+		datesMap[d.ID] = d
+	}
+
+	relationsMap := make(map[int]Relations)
+	for _, r := range relations.Index {
+		relationsMap[r.ID] = r
+	}
+
+	filters := ParseFilters(r)
+
 	var bands []BandInfo
 
-	for i, artist := range artists {
+	for _, artist := range artists {
 		// 1. creation date filter
-		if artist.CreationDate < creationMin || artist.CreationDate > creationMax {
+		if artist.CreationDate < filters.CreationMin || artist.CreationDate > filters.CreationMax {
 			continue
 		}
 		// 2. first album filter
@@ -111,16 +88,16 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		if len(albumParts) == 3 {
 			albumYear, err := strconv.Atoi(albumParts[2])
 			if err == nil {
-				if albumYear < firstAlbumMin || albumYear > firstAlbumMax {
+				if albumYear < filters.FirstAlbumMin || albumYear > filters.FirstAlbumMax {
 					continue
 				}
 			}
 		}
 		// 3. filter members
-		if len(membersParams) > 0 {
+		if len(filters.Members) > 0 {
 			matchedMembers := false
 			memberCountStr := strconv.Itoa(len(artist.Members))
-			for _, m := range membersParams {
+			for _, m := range filters.Members {
 				if m == memberCountStr {
 					matchedMembers = true
 					break
@@ -132,12 +109,13 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 4. filter location
-		if locationParam != "" {
+		artistLocs, locExists := locationMap[artist.ID]
+		if filters.Location != "" {
 			matchedLocation := false
-			if i < len(locations.Index) {
-				for _, loc := range locations.Index[i].Locations {
+			if locExists {
+				for _, loc := range artistLocs.Locations {
 					locClean := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(loc, "_", " "), "-", " "))
-					if strings.Contains(locClean, locationParam) {
+					if strings.Contains(locClean, filters.Location) {
 						matchedLocation = true
 						break
 					}
@@ -149,24 +127,31 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var formattedLocations []string
-
-		for _, location := range locations.Index[i].Locations {
-			cleanLoc := strings.ReplaceAll(location, "_", " ")
-			cleanLoc = strings.ReplaceAll(cleanLoc, "-", " ")
-			formattedLocations = append(formattedLocations, cleanLoc)
+		if locExists {
+			for _, location := range artistLocs.Locations {
+				cleanLoc := strings.ReplaceAll(location, "_", " ")
+				cleanLoc = strings.ReplaceAll(cleanLoc, "-", " ")
+				formattedLocations = append(formattedLocations, cleanLoc)
+			}
 		}
 
 		formattedRelations := make(map[string][]string)
-		for loc, datesList := range relations.Index[i].DatesLocations {
-			cleanRelLoc := strings.ReplaceAll(loc, "_", " ")
-			cleanRelLoc = strings.ReplaceAll(cleanRelLoc, "-", " ")
-			formattedRelations[cleanRelLoc] = datesList
+		artistRels, relExists := relationsMap[artist.ID]
+		if relExists {
+			for loc, datesList := range artistRels.DatesLocations {
+				cleanRelLoc := strings.ReplaceAll(loc, "_", " ")
+				cleanRelLoc = strings.ReplaceAll(cleanRelLoc, "-", " ")
+				formattedRelations[cleanRelLoc] = datesList
+			}
 		}
 
 		var formattedDates []string
-		for _, date := range dates.Index[i].Dates {
-			cleanDate := strings.ReplaceAll(date, "*", "")
-			formattedDates = append(formattedDates, cleanDate)
+		artistDates, dateExists := datesMap[artist.ID]
+		if dateExists {
+			for _, date := range artistDates.Dates {
+				cleanDate := strings.ReplaceAll(date, "*", "")
+				formattedDates = append(formattedDates, cleanDate)
+			}
 		}
 
 		band := BandInfo{
@@ -192,6 +177,13 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		Title:   "Groupie Tracker",
 		Artists: bands,
 	}
+
+	output, err := template.ParseFiles("templates/index.html")
+	if err != nil {
+		renderError(w, http.StatusInternalServerError, "Internal Server Error", "Could not parse template.")
+		return
+	}
+
 	err = output.Execute(w, data)
 	// Handle any errors that occur during template execution
 	if err != nil {
@@ -221,14 +213,19 @@ func artistHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var foundBand *BandInfo
-	for i, artist := range artists {
+	for _, artist := range artists {
 		if artist.ID == id {
 			formattedRelations := make(map[string][]string)
-			if i < len(relations.Index) {
-				for loc, datesList := range relations.Index[i].DatesLocations {
-					cleanRelLoc := strings.ReplaceAll(loc, "_", " ")
-					cleanRelLoc = strings.ReplaceAll(cleanRelLoc, "-", " ")
-					formattedRelations[cleanRelLoc] = datesList
+
+			// Match relation by ID safely
+			for _, rel := range relations.Index {
+				if rel.ID == artist.ID {
+					for loc, datesList := range rel.DatesLocations {
+						cleanRelLoc := strings.ReplaceAll(loc, "_", " ")
+						cleanRelLoc = strings.ReplaceAll(cleanRelLoc, "-", " ")
+						formattedRelations[cleanRelLoc] = datesList
+					}
+					break
 				}
 			}
 

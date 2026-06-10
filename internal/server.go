@@ -14,7 +14,7 @@ func StartServer() {
 	handler := http.NewServeMux()
 
 	// Print a message to the console indicating the server is starting
-	log.Printf("Server is running on port: %s\n", port)
+	log.Printf("Server is running on port: http://localhost%s\n", port)
 
 	// Register the homeHandler function to handle requests to the root URL ("/")
 	handler.HandleFunc("/", homeHandler)
