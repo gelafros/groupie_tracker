@@ -22,6 +22,15 @@ if (filtersForm) {
     fetchArtists();
   });
 
+  let filterDebounceTimer;
+  // Listen to any input changes inside the form (checkboxes, number inputs)
+  filtersForm.addEventListener("input", () => {
+    clearTimeout(filterDebounceTimer);
+    filterDebounceTimer = setTimeout(() => {
+      fetchArtists();
+    }, 250);
+  });
+
   // Intercept the reset button to clear everything asynchronously
   const resetBtn = filtersForm.querySelector(".btn-reset");
   if (resetBtn) {
