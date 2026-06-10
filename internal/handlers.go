@@ -32,55 +32,13 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the artist data from the external API
-	artists, err := FetchArtists()
-	// Handle any errors that occur during the API fetch
-	if err != nil {
-		renderError(w, http.StatusInternalServerError, "API Error", "Failed to fetch artists.")
-		return
-	}
-
-	locations, err := FetchLocations()
-	if err != nil {
-		renderError(w, http.StatusInternalServerError, "API Error", "Failed to fetch locations.")
-		return
-	}
-
-	dates, err := FetchDates()
-	if err != nil {
-		renderError(w, http.StatusInternalServerError, "API Error", "Failed to fetch dates.")
-		return
-	}
-
-	relations, err := FetchRelations()
-	if err != nil {
-		renderError(w, http.StatusInternalServerError, "API Error", "Failed to fetch relations.")
-		return
-	}
-
-	// Create lookup maps by ID for robust data matching
-	locationMap := make(map[int]Locations)
-	for _, loc := range locations.Index {
-		locationMap[loc.ID] = loc
-	}
-
-	datesMap := make(map[int]Dates)
-	for _, d := range dates.Index {
-		datesMap[d.ID] = d
-	}
-
-	relationsMap := make(map[int]Relations)
-	for _, r := range relations.Index {
-		relationsMap[r.ID] = r
-	}
-
 	// Parse filter queries from the request URL
 	filters := ParseFilters(r)
 
 	// bands slice will hold the final filtered artists
 	var bands []BandInfo
 
-	for _, artist := range artists {
+	for _, artist := range cachedArtists {
 		// 1. Filter by Creation Date
 		if artist.CreationDate < filters.CreationMin || artist.CreationDate > filters.CreationMax {
 			continue
@@ -113,7 +71,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 4. Filter by Concert Location
-		artistLocs, locExists := locationMap[artist.ID]
+		artistLocs, locExists := cachedLocationMap[artist.ID]
 		if filters.Location != "" {
 			matchedLocation := false
 			if locExists {
@@ -140,7 +98,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		formattedRelations := make(map[string][]string)
-		artistRels, relExists := relationsMap[artist.ID]
+		artistRels, relExists := cachedRelationsMap[artist.ID]
 		if relExists {
 			for loc, datesList := range artistRels.DatesLocations {
 				cleanRelLoc := strings.ReplaceAll(loc, "_", " ")
@@ -150,7 +108,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var formattedDates []string
-		artistDates, dateExists := datesMap[artist.ID]
+		artistDates, dateExists := cachedDatesMap[artist.ID]
 		if dateExists {
 			for _, date := range artistDates.Dates {
 				cleanDate := strings.ReplaceAll(date, "*", "")
@@ -205,31 +163,17 @@ func artistHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	artists, err := FetchArtists()
-	if err != nil {
-		renderError(w, http.StatusInternalServerError, "API Error", "Failed to fetch artists.")
-		return
-	}
-	relations, err := FetchRelations()
-	if err != nil {
-		renderError(w, http.StatusInternalServerError, "API Error", "Failed to fetch relations.")
-		return
-	}
-
 	var foundBand *BandInfo
-	for _, artist := range artists {
+	for _, artist := range cachedArtists {
 		if artist.ID == id {
 			formattedRelations := make(map[string][]string)
 
 			// Match relation by ID safely
-			for _, rel := range relations.Index {
-				if rel.ID == artist.ID {
-					for loc, datesList := range rel.DatesLocations {
-						cleanRelLoc := strings.ReplaceAll(loc, "_", " ")
-						cleanRelLoc = strings.ReplaceAll(cleanRelLoc, "-", " ")
-						formattedRelations[cleanRelLoc] = datesList
-					}
-					break
+			if rel, exists := cachedRelationsMap[artist.ID]; exists {
+				for loc, datesList := range rel.DatesLocations {
+					cleanRelLoc := strings.ReplaceAll(loc, "_", " ")
+					cleanRelLoc = strings.ReplaceAll(cleanRelLoc, "-", " ")
+					formattedRelations[cleanRelLoc] = datesList
 				}
 			}
 
