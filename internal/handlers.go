@@ -74,16 +74,19 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		relationsMap[r.ID] = r
 	}
 
+	// Parse filter queries from the request URL
 	filters := ParseFilters(r)
 
+	// bands slice will hold the final filtered artists
 	var bands []BandInfo
 
 	for _, artist := range artists {
-		// 1. creation date filter
+		// 1. Filter by Creation Date
 		if artist.CreationDate < filters.CreationMin || artist.CreationDate > filters.CreationMax {
 			continue
 		}
-		// 2. first album filter
+		
+		// 2. Filter by First Album Year (Format: DD-MM-YYYY)
 		albumParts := strings.Split(artist.FirstAlbum, "-")
 		if len(albumParts) == 3 {
 			albumYear, err := strconv.Atoi(albumParts[2])
@@ -93,7 +96,8 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-		// 3. filter members
+		
+		// 3. Filter by Number of Members
 		if len(filters.Members) > 0 {
 			matchedMembers := false
 			memberCountStr := strconv.Itoa(len(artist.Members))
@@ -108,7 +112,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// 4. filter location
+		// 4. Filter by Concert Location
 		artistLocs, locExists := locationMap[artist.ID]
 		if filters.Location != "" {
 			matchedLocation := false

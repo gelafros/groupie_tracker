@@ -13,37 +13,41 @@ type Artist struct {
 	Relations    string   `json:"relations"`
 }
 
-// LocationsIndex contains all the Locations structs
+// LocationsIndex represents the root response from the locations API containing all locations.
 type LocationsIndex struct {
 	Index []Locations `json:"index"`
 }
 
+// Locations represents the concert locations for a specific artist.
 type Locations struct {
 	ID        int      `json:"id"`
 	Locations []string `json:"locations"`
 	Dates     string   `json:"dates"`
 }
 
-// DatesIndex contains all the Dates structs
+// DatesIndex represents the root response from the dates API containing all concert dates.
 type DatesIndex struct {
 	Index []Dates `json:"index"`
 }
 
+// Dates represents the concert dates for a specific artist.
 type Dates struct {
 	ID    int      `json:"id"`
 	Dates []string `json:"dates"`
 }
 
-// RelationsIndex contains all the Relations structs
+// RelationsIndex represents the root response from the relations API containing all relations.
 type RelationsIndex struct {
 	Index []Relations `json:"index"`
 }
 
+// Relations links a specific artist's concert locations to their corresponding dates.
 type Relations struct {
 	ID             int                 `json:"id"`
 	DatesLocations map[string][]string `json:"datesLocations"`
 }
 
+// BandInfo is a consolidated struct that holds all merged data for a specific artist to be sent to templates.
 type BandInfo struct {
 	ID           int
 	Name         string
