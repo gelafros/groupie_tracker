@@ -67,11 +67,12 @@ async function fetchArtists() {
     renderSearchMessage(query, artists.length);
   } catch (error) {
     searchResults.textContent = "Search is temporarily unavailable.";
+    if (artistsGrid) artistsGrid.innerHTML = '<p class="error-state">Failed to load artists. Please try again later.</p>';
   }
 }
 
 function renderArtists(artists) {
-  if (!artists.length) {
+  if (!Array.isArray(artists) || artists.length === 0) {
     artistsGrid.innerHTML = '<p class="empty-state">No matching artists found.</p>';
     return;
   }
