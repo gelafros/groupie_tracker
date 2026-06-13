@@ -25,7 +25,7 @@ func renderError(w http.ResponseWriter, status int, title, message string) {
 }
 
 // homeHandler parses and serves the index.html template for the root route.
-// It handles template parsing and execution errors by responding with a 500 status.
+// It applies user-selected filters on the pre-processed cache to return matching bands.
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	// Ensure that only the exact root path "/" is handled here to prevent it from acting as a catch-all
 	if r.URL.Path != "/" {
@@ -33,30 +33,28 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse filter queries from the request URL
+	// Parse filter queries from the request URL (creationDateMin/Max, firstAlbumMin/Max, members, location)
 	filters := ParseFilters(r)
 
-	// bands slice will hold the final filtered artists
+	// bands slice will hold the final filtered list of BandInfo to render in the HTML template
 	var bands []BandInfo
 
-	for _, artist := range cachedArtists {
-		// 1. Filter by Creation Date
+	// Loop over our pre-processed artists to filter them efficiently without string splits or allocations
+	for _, pa := range processedArtists {
+		artist := pa.Artist
+
+		// 1. Filter by Creation Date (numeric comparison)
 		if artist.CreationDate < filters.CreationMin || artist.CreationDate > filters.CreationMax {
 			continue
 		}
 		
-		// 2. Filter by First Album Year (Format: DD-MM-YYYY)
-		albumParts := strings.Split(artist.FirstAlbum, "-")
-		if len(albumParts) == 3 {
-			albumYear, err := strconv.Atoi(albumParts[2])
-			if err == nil {
-				if albumYear < filters.FirstAlbumMin || albumYear > filters.FirstAlbumMax {
-					continue
-				}
-			}
+		// 2. Filter by First Album Year (uses pre-parsed FirstAlbumYear integer)
+		if pa.FirstAlbumYear < filters.FirstAlbumMin || pa.FirstAlbumYear > filters.FirstAlbumMax {
+			continue
 		}
 		
 		// 3. Filter by Number of Members
+		// If member filter options are selected (e.g. 1, 2, 4), verify if the artist's member count is matched.
 		if len(filters.Members) > 0 {
 			matchedMembers := false
 			memberCountStr := strconv.Itoa(len(artist.Members))
@@ -72,16 +70,13 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 4. Filter by Concert Location
-		artistLocs, locExists := cachedLocationMap[artist.ID]
+		// Performs a fast check against our pre-cleaned locations slice
 		if filters.Location != "" {
 			matchedLocation := false
-			if locExists {
-				for _, loc := range artistLocs.Locations {
-					locClean := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(loc, "_", " "), "-", " "))
-					if strings.Contains(locClean, filters.Location) {
-						matchedLocation = true
-						break
-					}
+			for _, locClean := range pa.CleanLocations {
+				if strings.Contains(locClean, filters.Location) {
+					matchedLocation = true
+					break
 				}
 			}
 			if !matchedLocation {
@@ -89,50 +84,11 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		var formattedLocations []string
-		if locExists {
-			for _, location := range artistLocs.Locations {
-				cleanLoc := strings.ReplaceAll(location, "_", " ")
-				cleanLoc = strings.ReplaceAll(cleanLoc, "-", " ")
-				formattedLocations = append(formattedLocations, cleanLoc)
-			}
-		}
-
-		formattedRelations := make(map[string][]string)
-		artistRels, relExists := cachedRelationsMap[artist.ID]
-		if relExists {
-			for loc, datesList := range artistRels.DatesLocations {
-				cleanRelLoc := strings.ReplaceAll(loc, "_", " ")
-				cleanRelLoc = strings.ReplaceAll(cleanRelLoc, "-", " ")
-				formattedRelations[cleanRelLoc] = datesList
-			}
-		}
-
-		var formattedDates []string
-		artistDates, dateExists := cachedDatesMap[artist.ID]
-		if dateExists {
-			for _, date := range artistDates.Dates {
-				cleanDate := strings.ReplaceAll(date, "*", "")
-				formattedDates = append(formattedDates, cleanDate)
-			}
-		}
-
-		band := BandInfo{
-			ID:           artist.ID,
-			Name:         artist.Name,
-			CreationDate: artist.CreationDate,
-			Image:        artist.Image,
-			Locations:    formattedLocations,
-			Dates:        formattedDates,
-			Relations:    formattedRelations,
-			Members:      artist.Members,
-			FirstAlbum:   artist.FirstAlbum,
-		}
-
-		bands = append(bands, band)
+		// Since this artist passed all filters, append the pre-formatted BandInfo representation
+		bands = append(bands, pa.BandInfo)
 	}
 
-	// Execute the parsed template, passing the fetched artist data to it
+	// Prepare data structure for the template execution
 	data := struct {
 		Title   string
 		Artists []BandInfo
@@ -141,12 +97,14 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		Artists: bands,
 	}
 
+	// Load and parse the index dashboard template
 	output, err := template.ParseFiles("templates/index.html")
 	if err != nil {
 		renderError(w, http.StatusInternalServerError, "Internal Server Error", "Could not parse template.")
 		return
 	}
 
+	// Render the template with the filtered bands
 	err = output.Execute(w, data)
 	// Handle any errors that occur during template execution
 	if err != nil {
@@ -156,7 +114,9 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // artistHandler handles the individual artist details page.
+// It retrieves the artist ID from query parameters and finds the corresponding pre-formatted BandInfo.
 func artistHandler(w http.ResponseWriter, r *http.Request) {
+	// Parse the query parameter "id"
 	idStr := r.URL.Query().Get("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id < 1 {
@@ -164,44 +124,29 @@ func artistHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Find the matching artist in our pre-processed cache
 	var foundBand *BandInfo
-	for _, artist := range cachedArtists {
-		if artist.ID == id {
-			formattedRelations := make(map[string][]string)
-
-			// Match relation by ID safely
-			if rel, exists := cachedRelationsMap[artist.ID]; exists {
-				for loc, datesList := range rel.DatesLocations {
-					cleanRelLoc := strings.ReplaceAll(loc, "_", " ")
-					cleanRelLoc = strings.ReplaceAll(cleanRelLoc, "-", " ")
-					formattedRelations[cleanRelLoc] = datesList
-				}
-			}
-
-			foundBand = &BandInfo{
-				ID:           artist.ID,
-				Name:         artist.Name,
-				CreationDate: artist.CreationDate,
-				Image:        artist.Image,
-				Relations:    formattedRelations,
-				Members:      artist.Members,
-				FirstAlbum:   artist.FirstAlbum,
-			}
+	for _, pa := range processedArtists {
+		if pa.Artist.ID == id {
+			foundBand = &pa.BandInfo
 			break
 		}
 	}
 
+	// If the artist doesn't exist, return a 404
 	if foundBand == nil {
 		renderError(w, http.StatusNotFound, "Not Found", "Artist not found.")
 		return
 	}
 
+	// Load and parse the single artist details template
 	tmpl, err := template.ParseFiles("templates/artist.html")
 	if err != nil {
 		renderError(w, http.StatusInternalServerError, "Internal Server Error", "Could not load artist template.")
 		return
 	}
 
+	// Populate data with the pre-formatted BandInfo structure
 	data := struct {
 		Title  string
 		Artist *BandInfo
@@ -210,42 +155,40 @@ func artistHandler(w http.ResponseWriter, r *http.Request) {
 		Artist: foundBand,
 	}
 
+	// Execute and render the artist page
 	if err := tmpl.Execute(w, data); err != nil {
 		renderError(w, http.StatusInternalServerError, "Internal Server Error", "Template execution failed.")
 	}
 }
 
 // searchHandler handles asynchronous requests for filtering and searching.
-// It returns a JSON array of artists matching all selected criteria.
+// It returns a JSON array of artists matching all selected criteria for the frontend live search.
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse standard filters (year ranges, members, locations)
 	filters := ParseFilters(r)
 	
-	// Grab the search query for the artist name
+	// Grab the search query for the artist name and normalize it to lowercase
 	query := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 
 	var filteredArtists []Artist
 
-	for _, artist := range cachedArtists {
-		// Apply name search
+	// Loop over pre-processed cache to filter out matching artists
+	for _, pa := range processedArtists {
+		artist := pa.Artist
+
+		// Apply name search if a query was provided
 		if query != "" && !strings.Contains(strings.ToLower(artist.Name), query) {
 			continue
 		}
 
-		// 1. Filter by Creation Date
+		// 1. Filter by Creation Date (numeric comparison)
 		if artist.CreationDate < filters.CreationMin || artist.CreationDate > filters.CreationMax {
 			continue
 		}
 		
-		// 2. Filter by First Album Year (Format: DD-MM-YYYY)
-		albumParts := strings.Split(artist.FirstAlbum, "-")
-		if len(albumParts) == 3 {
-			albumYear, err := strconv.Atoi(albumParts[2])
-			if err == nil {
-				if albumYear < filters.FirstAlbumMin || albumYear > filters.FirstAlbumMax {
-					continue
-				}
-			}
+		// 2. Filter by First Album Year (uses pre-parsed FirstAlbumYear integer)
+		if pa.FirstAlbumYear < filters.FirstAlbumMin || pa.FirstAlbumYear > filters.FirstAlbumMax {
+			continue
 		}
 		
 		// 3. Filter by Number of Members
@@ -264,16 +207,12 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 4. Filter by Concert Location
-		artistLocs, locExists := cachedLocationMap[artist.ID]
 		if filters.Location != "" {
 			matchedLocation := false
-			if locExists {
-				for _, loc := range artistLocs.Locations {
-					locClean := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(loc, "_", " "), "-", " "))
-					if strings.Contains(locClean, filters.Location) {
-						matchedLocation = true
-						break
-					}
+			for _, locClean := range pa.CleanLocations {
+				if strings.Contains(locClean, filters.Location) {
+					matchedLocation = true
+					break
 				}
 			}
 			if !matchedLocation {
@@ -281,6 +220,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		// Append the raw Artist struct to the search results
 		filteredArtists = append(filteredArtists, artist)
 	}
 
@@ -289,6 +229,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		filteredArtists = []Artist{}
 	}
 
+	// Return the filtered artists as a JSON response
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(filteredArtists); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)

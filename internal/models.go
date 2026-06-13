@@ -69,3 +69,13 @@ type FilterParams struct {
 	Members       []string
 	Location      string
 }
+
+// ProcessedArtist holds the raw artist data along with pre-parsed fields for fast filtering.
+// This is the optimized in-memory model that avoids doing expensive string transformations
+// and integer conversions during client HTTP requests.
+type ProcessedArtist struct {
+	Artist         Artist       // The raw, unmutated artist struct directly from the API.
+	BandInfo       BandInfo     // The pre-formatted artist details ready for rendering in templates.
+	FirstAlbumYear int          // The pre-parsed year of the first album as an integer (e.g. 1979) for range filtering.
+	CleanLocations []string     // Lowercased concert locations with underscores and hyphens replaced with spaces.
+}

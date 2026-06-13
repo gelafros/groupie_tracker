@@ -3,6 +3,8 @@ package internal
 import (
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 // Package-level variables to hold cached API data
@@ -11,6 +13,7 @@ var (
 	cachedLocationMap  map[int]Locations
 	cachedDatesMap     map[int]Dates
 	cachedRelationsMap map[int]Relations
+	processedArtists   []ProcessedArtist
 )
 
 // StartServer initializes the HTTP multiplexer, registers the routes,
@@ -49,6 +52,81 @@ func StartServer() {
 	cachedRelationsMap = make(map[int]Relations)
 	for _, r := range relations.Index {
 		cachedRelationsMap[r.ID] = r
+	}
+
+	// Pre-process and cache artist data to resolve Bottleneck #2
+	// This runs exactly once on server startup, shifting computational overhead from request-time to build-time.
+	processedArtists = make([]ProcessedArtist, len(cachedArtists))
+	for i, artist := range cachedArtists {
+		// 1. Pre-parse the First Album year.
+		// The format is "DD-MM-YYYY", so we grab the third part (index 2) representing the year.
+		var albumYear int
+		albumParts := strings.Split(artist.FirstAlbum, "-")
+		if len(albumParts) == 3 {
+			if yr, err := strconv.Atoi(albumParts[2]); err == nil {
+				albumYear = yr
+			}
+		}
+
+		// 2. Pre-clean locations for search and pre-format locations for templates.
+		// - Clean locations: Lowercased and stripped of underscores/hyphens for instant query matching.
+		// - Formatted locations: Human-readable strings where underscores and hyphens are replaced with spaces.
+		var cleanLocs []string
+		var formattedLocations []string
+		if locs, exists := cachedLocationMap[artist.ID]; exists {
+			for _, loc := range locs.Locations {
+				locClean := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(loc, "_", " "), "-", " "))
+				cleanLocs = append(cleanLocs, locClean)
+
+				cleanLoc := strings.ReplaceAll(loc, "_", " ")
+				cleanLoc = strings.ReplaceAll(cleanLoc, "-", " ")
+				formattedLocations = append(formattedLocations, cleanLoc)
+			}
+		}
+
+		// 3. Pre-format relations (locations mapped to dates) for templates.
+		// Underscores and hyphens in location names are cleaned for a better display layout.
+		formattedRelations := make(map[string][]string)
+		if artistRels, exists := cachedRelationsMap[artist.ID]; exists {
+			for loc, datesList := range artistRels.DatesLocations {
+				cleanRelLoc := strings.ReplaceAll(loc, "_", " ")
+				cleanRelLoc = strings.ReplaceAll(cleanRelLoc, "-", " ")
+				formattedRelations[cleanRelLoc] = datesList
+			}
+		}
+
+		// 4. Pre-format dates for templates.
+		// Asterisks (*) are stripped from dates to present clean strings.
+		var formattedDates []string
+		if artistDates, exists := cachedDatesMap[artist.ID]; exists {
+			for _, date := range artistDates.Dates {
+				cleanDate := strings.ReplaceAll(date, "*", "")
+				formattedDates = append(formattedDates, cleanDate)
+			}
+		}
+
+		// 5. Build the fully pre-formatted BandInfo struct.
+		// This struct will be passed directly to HTML templates during requests,
+		// avoiding any memory allocations or string operations when servicing pages.
+		bandInfo := BandInfo{
+			ID:           artist.ID,
+			Name:         artist.Name,
+			CreationDate: artist.CreationDate,
+			Image:        artist.Image,
+			Locations:    formattedLocations,
+			Dates:        formattedDates,
+			Relations:    formattedRelations,
+			Members:      artist.Members,
+			FirstAlbum:   artist.FirstAlbum,
+		}
+
+		// Save the processed data into our global slice.
+		processedArtists[i] = ProcessedArtist{
+			Artist:         artist,
+			BandInfo:       bandInfo,
+			FirstAlbumYear: albumYear,
+			CleanLocations: cleanLocs,
+		}
 	}
 
 	log.Println("API data successfully cached! Starting up the server...")
