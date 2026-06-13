@@ -99,8 +99,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (coords) {
                     locationCache[event.cleanLocation] = coords;
                 }
-                // Wait 1 second to respect Nominatim API rate limits
-                await new Promise(r => setTimeout(r, 1000));
             }
 
             if (coords) {
@@ -132,6 +130,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 count++;
             }
+
+            // Always wait 1 second between processing events to respect Nominatim API rate limits
+            // and to animate the drawing progressively, even if cached.
+            await new Promise(r => setTimeout(r, 1000));
         }
 
         // Final fit bounds to ensure all are perfectly visible
