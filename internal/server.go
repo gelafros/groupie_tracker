@@ -22,11 +22,14 @@ func StartServer() {
 	log.Println("Fetching API data. This might take a moment...")
 
 	var err error
+	// 1. Fetch raw Artists list from the external API
 	cachedArtists, err = FetchArtists()
 	if err != nil {
 		log.Fatalf("Failed to fetch artists: %v", err)
 	}
 
+	// 2. Fetch raw locations index and build cachedLocationMap keyed by Artist ID
+	// for instant lookup when processing relationship objects or filtering.
 	locations, err := FetchLocations()
 	if err != nil {
 		log.Fatalf("Failed to fetch locations: %v", err)
@@ -36,6 +39,7 @@ func StartServer() {
 		cachedLocationMap[loc.ID] = loc
 	}
 
+	// 3. Fetch raw concert dates index and build cachedDatesMap keyed by Artist ID.
 	dates, err := FetchDates()
 	if err != nil {
 		log.Fatalf("Failed to fetch dates: %v", err)
@@ -45,6 +49,7 @@ func StartServer() {
 		cachedDatesMap[d.ID] = d
 	}
 
+	// 4. Fetch raw relations index mapping locations to dates, keyed by Artist ID.
 	relations, err := FetchRelations()
 	if err != nil {
 		log.Fatalf("Failed to fetch relations: %v", err)
