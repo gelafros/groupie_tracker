@@ -6,6 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{.Title}}</title>
   <link rel="stylesheet" href="/static/css/style.css">
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <script src="/static/javascript/map.js" defer></script>
 </head>
 
 <body>
@@ -34,7 +40,16 @@
 
     <section>
       <h2 class="section-title">Concert Locations</h2>
-      <div>
+      
+      <div class="map-and-timeline" style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <div id="map" style="height: 400px; flex: 1; min-width: 300px; border: 1px solid #ccc; border-radius: 8px;"></div>
+        <div id="timeline" style="flex: 1; min-width: 300px;">
+          <h3>Chronological Path</h3>
+          <ul id="timeline-list" style="list-style-type: none; padding: 0; max-height: 400px; overflow-y: auto;"></ul>
+        </div>
+      </div>
+
+      <div style="display: none;"> <!-- hide the original list since we show the timeline now, but keep for JS to read -->
         {{range $loc, $dates := .Artist.Relations}}
         <div class="relation-item">
           <h3 class="relation-location">{{$loc}}</h3>
