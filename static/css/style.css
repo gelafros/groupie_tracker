@@ -522,3 +522,80 @@ img {
     font-size: 1.25rem;
   }
 }
+
+/* ---------- Detail page: Map and Timeline ---------- */
+.map-and-timeline {
+  display: flex;
+  gap: var(--gap);
+  flex-wrap: wrap;
+}
+
+.map-container {
+  height: 400px;
+  flex: 1;
+  min-width: 300px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  z-index: 1; /* Keep leaflet controls below dropdowns if any */
+}
+
+.timeline-container {
+  flex: 1;
+  min-width: 300px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
+.timeline-list {
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+  max-height: 330px;
+  padding-right: 0.5rem;
+}
+
+.timeline-list li {
+  background: var(--bg);
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: calc(var(--radius) / 2);
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+  color: var(--text);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.timeline-list li:hover {
+  border-color: var(--accent);
+  background: #1a1a1a;
+}
+
+/* Custom Scrollbar for Timeline */
+.timeline-list::-webkit-scrollbar {
+  width: 6px;
+}
+.timeline-list::-webkit-scrollbar-track {
+  background: var(--bg);
+  border-radius: var(--radius);
+}
+.timeline-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius);
+}
+.timeline-list::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
