@@ -47,12 +47,12 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		if artist.CreationDate < filters.CreationMin || artist.CreationDate > filters.CreationMax {
 			continue
 		}
-		
+
 		// 2. Filter by First Album Year (uses pre-parsed FirstAlbumYear integer)
 		if pa.FirstAlbumYear < filters.FirstAlbumMin || pa.FirstAlbumYear > filters.FirstAlbumMax {
 			continue
 		}
-		
+
 		// 3. Filter by Number of Members
 		// If member filter options are selected (e.g. 1, 2, 4), verify if the artist's member count is matched.
 		if len(filters.Members) > 0 {
@@ -166,7 +166,7 @@ func artistHandler(w http.ResponseWriter, r *http.Request) {
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse standard filters (year ranges, members, locations)
 	filters := ParseFilters(r)
-	
+
 	// Grab the search query for the artist name and normalize it to lowercase
 	query := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 
@@ -185,12 +185,12 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		if artist.CreationDate < filters.CreationMin || artist.CreationDate > filters.CreationMax {
 			continue
 		}
-		
+
 		// 2. Filter by First Album Year (uses pre-parsed FirstAlbumYear integer)
 		if pa.FirstAlbumYear < filters.FirstAlbumMin || pa.FirstAlbumYear > filters.FirstAlbumMax {
 			continue
 		}
-		
+
 		// 3. Filter by Number of Members
 		if len(filters.Members) > 0 {
 			matchedMembers := false

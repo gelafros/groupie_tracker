@@ -16,7 +16,7 @@ func ParseFilters(r *http.Request) FilterParams {
 	firstAlbumMinStr := queryParams.Get("firstAlbumMin")
 	firstAlbumMaxStr := queryParams.Get("firstAlbumMax")
 	membersParams := queryParams["members"] // Grabs all array parameters matching ?members=X&members=Y...
-	
+
 	// Normalize the location search input: lowercase it, trim surrounding spaces, and remove commas
 	// to make matching more flexible (e.g. matching "London, UK" with "london uk").
 	locationParam := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(queryParams.Get("location"))), ",", "")
@@ -38,21 +38,21 @@ func ParseFilters(r *http.Request) FilterParams {
 			filters.CreationMin = val
 		}
 	}
-	
+
 	// 2. Convert Creation Date Maximum from string to integer if provided
 	if creationMaxStr != "" {
 		if val, err := strconv.Atoi(creationMaxStr); err == nil {
 			filters.CreationMax = val
 		}
 	}
-	
+
 	// 3. Convert First Album Minimum Year from string to integer if provided
 	if firstAlbumMinStr != "" {
 		if val, err := strconv.Atoi(firstAlbumMinStr); err == nil {
 			filters.FirstAlbumMin = val
 		}
 	}
-	
+
 	// 4. Convert First Album Maximum Year from string to integer if provided
 	if firstAlbumMaxStr != "" {
 		if val, err := strconv.Atoi(firstAlbumMaxStr); err == nil {
