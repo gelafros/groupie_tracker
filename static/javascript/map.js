@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    const polylineLatLngs = [];
+    const polyline = L.polyline([], {color: 'red', dashArray: '5, 5', weight: 2}).addTo(map);
     const timelineDiv = document.getElementById("timeline-list");
 
     async function geocode(location) {
@@ -99,38 +99,44 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (coords) {
                     locationCache[event.cleanLocation] = coords;
                 }
-                // Wait 1 second to respect Nominatim API rate limits (max 1 req/sec)
+                // Wait 1 second to respect Nominatim API rate limits
                 await new Promise(r => setTimeout(r, 1000));
             }
 
             if (coords) {
-                // To avoid exact overlapping, we could add a tiny offset, but for simplicity we let them stack
-                // or just append popup info. Since we render chronologically, a polyline is enough.
-                
-                // We'll create a marker for each event
+                // Add marker
                 const marker = L.marker([coords.lat, coords.lon]).addTo(map);
                 
                 // Tooltip and Popup
                 const popupContent = `<b>#${count} ${event.cleanLocation.toUpperCase()}</b><br>Date: ${event.dateStr}`;
                 marker.bindPopup(popupContent);
                 
-                polylineLatLngs.push([coords.lat, coords.lon]);
+                // Add point to polyline dynamically
+                polyline.addLatLng([coords.lat, coords.lon]);
+
+                // Fit bounds dynamically so the user can see the path growing
+                if (count === 1) {
+                    map.setView([coords.lat, coords.lon], 4);
+                } else {
+                    map.fitBounds(polyline.getBounds(), { padding: [50, 50], maxZoom: 5 });
+                }
 
                 // Append to timeline
                 if (timelineDiv) {
                     const li = document.createElement("li");
                     li.innerText = `#${count}: ${event.cleanLocation} (${event.dateStr})`;
                     timelineDiv.appendChild(li);
+                    // auto-scroll timeline
+                    timelineDiv.scrollTop = timelineDiv.scrollHeight;
                 }
 
                 count++;
             }
         }
 
-        // Draw path connecting markers in chronological order
-        if (polylineLatLngs.length > 0) {
-            const polyline = L.polyline(polylineLatLngs, {color: 'red', dashArray: '5, 5', weight: 2}).addTo(map);
-            map.fitBounds(polyline.getBounds());
+        // Final fit bounds to ensure all are perfectly visible
+        if (polyline.getLatLngs().length > 1) {
+            map.fitBounds(polyline.getBounds(), { padding: [20, 20] });
         }
     }
 
