@@ -3,7 +3,7 @@
 ## Overview
 Groupie Tracker is a web application that consumes a RESTful API to display information about various musical artists and bands. It provides a user-friendly interface to view artist details, their concert locations, and dates. 
 
-This specific project version focuses on the **Geolocalization** and **Filters** features. It allows users to narrow down the list of artists based on various criteria, and provides a rich, interactive map to visualize the chronological path of an artist's tour across the globe.
+This specific project version focuses on the **Geolocalization**, **Search-Bar** and **Filters** features. It allows users to narrow down the list of artists based on various criteria, and provides a rich, interactive map to visualize the chronological path of an artist's tour across the globe.
 
 ## Features
 - **Artist Display:** View a grid of artists with their images, names, and creation dates.
@@ -17,7 +17,7 @@ This specific project version focuses on the **Geolocalization** and **Filters**
   - First Album Year (Min/Max Year)
   - Number of Members (Checkboxes)
   - Concert Locations (Text match)
-- **Live Search Functionality:** Real-time, asynchronous client-side search bar to quickly find artists by name.
+- **Live Search Functionality:** Real-time, asynchronous search bar. Includes autocomplete suggestions triggered at 3+ characters that display the match type (artist/band, member, location, first album date, or creation date) and redirect directly to the artist details page.
 
 ## Project Structure
 - `cmd/`: Contains the application entry point (`main.go`).
