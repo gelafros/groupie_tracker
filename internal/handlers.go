@@ -236,3 +236,74 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// suggestionsHandler handles asynchronous requests for suggestions
+func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
+	query := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+	if query == "" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]SearchSuggestion{})
+		return
+	}
+
+	var suggestions []SearchSuggestion
+	for _, pa := range processedArtists {
+		// 1. Match by Artist/Band Name
+		if strings.Contains(strings.ToLower(pa.Artist.Name), query) {
+			suggestions = append(suggestions, SearchSuggestion{
+				DisplayText: pa.Artist.Name + " - artist/band",
+				ArtistID:    pa.Artist.ID,
+			})
+		}
+
+		// 2. Match by Members
+		for _, member := range pa.Artist.Members {
+			if strings.Contains(strings.ToLower(member), query) {
+				suggestions = append(suggestions, SearchSuggestion{
+					DisplayText: member + " - member",
+					ArtistID:    pa.Artist.ID,
+				})
+			}
+		}
+
+		// 3. Match by Locations
+		for _, loc := range pa.BandInfo.Locations {
+			if strings.Contains(strings.ToLower(loc), query) {
+				suggestions = append(suggestions, SearchSuggestion{
+					DisplayText: loc + " - location",
+					ArtistID:    pa.Artist.ID,
+				})
+			}
+		}
+
+		// 4. Match by First Album Date
+		if strings.Contains(strings.ToLower(pa.Artist.FirstAlbum), query) {
+			suggestions = append(suggestions, SearchSuggestion{
+				DisplayText: pa.Artist.FirstAlbum + " - first album date",
+				ArtistID:    pa.Artist.ID,
+			})
+		}
+
+		// 5. Match by Creation Date
+		creationDateStr := strconv.Itoa(pa.Artist.CreationDate)
+		if strings.Contains(creationDateStr, query) {
+			suggestions = append(suggestions, SearchSuggestion{
+				DisplayText: creationDateStr + " - creation date",
+				ArtistID:    pa.Artist.ID,
+			})
+		}
+	}
+
+	// Avoid returning null in JSON by ensuring it's an empty slice if nil
+	if suggestions == nil {
+		suggestions = []SearchSuggestion{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(suggestions); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+

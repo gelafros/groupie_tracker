@@ -85,3 +85,9 @@ type ProcessedArtist struct {
 	FirstAlbumYear int      // The pre-parsed year of the first album as an integer (e.g. 1979) for range filtering.
 	CleanLocations []string // Lowercased concert locations with underscores and hyphens replaced with spaces.
 }
+
+// SearchSuggestion represents a single pre-formatted search autocomplete suggestion.
+type SearchSuggestion struct {
+	DisplayText string `json:"displayText"` // e.g., "Freddie Mercury - member"
+	ArtistID    int    `json:"artistId"`    // Matches the corresponding Artist ID for navigation.
+}

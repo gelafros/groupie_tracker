@@ -15,7 +15,9 @@
   <main class="home-main">
     <section class="search-section">
       <input class="search-input" type="text" id="searchInput" aria-label="Search artists" placeholder="Search artists…"
-        autocomplete="off">
+        list="searchSuggestions" autocomplete="off">
+      <datalist class="suggestions" id="searchSuggestions"></datalist>
+
       <div class="search-results" id="searchResults" aria-live="polite"></div>
     </section>
     <form method="GET" action="/" class="filters-form">

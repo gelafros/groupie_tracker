@@ -150,6 +150,8 @@ func StartServer() {
 	handler.HandleFunc("/artist", artistHandler)
 	// Register the search API for client-side asynchronous filtering
 	handler.HandleFunc("/api/search", searchHandler)
+	// Register the suggestions API for client-side asynchronous suggestions
+	handler.HandleFunc("/api/suggestions", suggestionsHandler)
 	// Handle the css call
 	fileserver := http.FileServer(http.Dir("./static"))
 	handler.Handle("/static/", http.StripPrefix("/static", fileserver))

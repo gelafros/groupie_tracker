@@ -2,18 +2,53 @@ const searchInput = document.getElementById("searchInput");
 const searchResults = document.getElementById("searchResults");
 const artistsGrid = document.getElementById("artistsGrid");
 const filtersForm = document.querySelector(".filters-form");
+const searchSuggestions = document.getElementById("searchSuggestions");
 
 if (searchInput && searchResults && artistsGrid) {
   let debounceTimer;
 
-  // Task 08: listen to user typing and trigger the client-server event.
+  // Listen to user typing and trigger the client-server event.
   searchInput.addEventListener("input", () => {
+    const query = searchInput.value.trim();
+
+    // Check if the search suggestions element exists
+    if (searchSuggestions) {
+
+      // Get the current text typed by the user
+      let typedText = searchInput.value;
+
+      // Retrieve all available options from the suggestions datalist
+      let allOptions = searchSuggestions.querySelectorAll("option");
+
+      // Check options one by one
+      for (let option of allOptions) {
+
+        let optionText = option.value;
+
+        // If option text matches user input exactly
+        if (optionText === typedText) {
+
+          // Found match! Retrieve the hidden artist ID
+          let artistId = option.getAttribute("data-artist-id");
+
+          // Redirect user to artist details page using this ID
+          if (artistId) {
+            window.location.href = "/artist?id=" + artistId;
+          }
+
+          return;
+        }
+      }
+    }
+
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       fetchArtists();
+      fetchSuggestions(query);
     }, 250);
   });
 }
+
 
 if (filtersForm) {
   // Intercept the filter form submission to stop the page reload
@@ -105,6 +140,52 @@ function renderSearchMessage(query, resultCount) {
   }
 
   searchResults.textContent = `${resultCount} result(s) for "${query}".`;
+}
+
+// Async function to fetch search suggestions from the server
+async function fetchSuggestions(query) {
+  // STEP 1: Initial checks
+  if (!searchSuggestions) {
+    return; // If suggestions box does not exist on the page, exit.
+  }
+
+  if (query.length < 3) {
+    searchSuggestions.innerHTML = ""; // Empty suggestions if query is less than 3 characters.
+    return;
+  }
+
+  // STEP 2: Request data from server (inside try-catch to handle network errors gracefully)
+  try {
+    // Construct URL with URL-encoded query parameter
+    let url = "/api/suggestions?q=" + encodeURIComponent(query);
+
+    // Send request to server and await response
+    let response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Suggestions request failed");
+    }
+
+    // Parse response body as JSON
+    let suggestionsList = await response.json();
+
+    // STEP 3: Construct the HTML options list
+    let newHtml = "";
+
+    // Loop through each suggestion sent by the server
+    for (let item of suggestionsList) {
+      let text = item.displayText; // E.g., "Phil Collins - member"
+      let id = item.artistId;      // E.g., 10
+
+      // Append a formatted option tag
+      newHtml = newHtml + `<option value="${escapeHtml(text)}" data-artist-id="${id}"></option>`;
+    }
+
+    // STEP 4: Render the suggestions list to page
+    searchSuggestions.innerHTML = newHtml;
+
+  } catch (error) {
+    console.error("Error loading suggestions:", error);
+  }
 }
 
 function escapeHtml(value) {
