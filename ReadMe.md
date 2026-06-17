@@ -17,7 +17,7 @@ This specific project version focuses on the **Geolocalization**, **Search-Bar**
   - First Album Year (Min/Max Year)
   - Number of Members (Checkboxes)
   - Concert Locations (Text match)
-- **Live Search Functionality:** Real-time, asynchronous search bar. Includes autocomplete suggestions triggered at 3+ characters that display the match type (artist/band, member, location, first album date, or creation date) and redirect directly to the artist details page.
+- **Live Search Functionality:** Real-time, asynchronous search bar. Includes autocomplete suggestions (triggered for any query length) that display the match type along with the corresponding band name (e.g., member, location, first album date, or creation date) and redirect directly to the artist details page.
 
 ## Project Structure
 - `cmd/`: Contains the application entry point (`main.go`).

@@ -149,8 +149,8 @@ async function fetchSuggestions(query) {
     return; // If suggestions box does not exist on the page, exit.
   }
 
-  if (query.length < 3) {
-    searchSuggestions.innerHTML = ""; // Empty suggestions if query is less than 3 characters.
+  if (query.length === 0) {
+    searchSuggestions.innerHTML = "";
     return;
   }
 

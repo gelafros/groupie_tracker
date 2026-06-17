@@ -260,7 +260,7 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 		for _, member := range pa.Artist.Members {
 			if strings.Contains(strings.ToLower(member), query) {
 				suggestions = append(suggestions, SearchSuggestion{
-					DisplayText: member + " - member",
+					DisplayText: member + " - member (" + pa.Artist.Name + ")",
 					ArtistID:    pa.Artist.ID,
 				})
 			}
@@ -270,7 +270,7 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 		for _, loc := range pa.BandInfo.Locations {
 			if strings.Contains(strings.ToLower(loc), query) {
 				suggestions = append(suggestions, SearchSuggestion{
-					DisplayText: loc + " - location",
+					DisplayText: loc + " - location (" + pa.Artist.Name + ")",
 					ArtistID:    pa.Artist.ID,
 				})
 			}
@@ -279,7 +279,7 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 		// 4. Match by First Album Date
 		if strings.Contains(strings.ToLower(pa.Artist.FirstAlbum), query) {
 			suggestions = append(suggestions, SearchSuggestion{
-				DisplayText: pa.Artist.FirstAlbum + " - first album date",
+				DisplayText: pa.Artist.FirstAlbum + " - first album date (" + pa.Artist.Name + ")",
 				ArtistID:    pa.Artist.ID,
 			})
 		}
@@ -288,7 +288,7 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 		creationDateStr := strconv.Itoa(pa.Artist.CreationDate)
 		if strings.Contains(creationDateStr, query) {
 			suggestions = append(suggestions, SearchSuggestion{
-				DisplayText: creationDateStr + " - creation date",
+				DisplayText: creationDateStr + " - creation date (" + pa.Artist.Name + ")",
 				ArtistID:    pa.Artist.ID,
 			})
 		}
