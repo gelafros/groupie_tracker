@@ -23,44 +23,32 @@ scopeButtons.forEach(btn => {
   });
 });
 
-if (searchInput && searchResults && artistsGrid) {
+if (searchInput && searchSuggestions && searchResults && artistsGrid) {
   let debounceTimer;
 
   // Listen to user typing and trigger the client-server event.
   searchInput.addEventListener("input", () => {
     const query = searchInput.value.trim();
 
-    // Check if the search suggestions element exists
-    if (searchSuggestions) {
-      // Get the current text typed by the user
-      let typedText = searchInput.value;
-
-      // Retrieve all available options from the suggestions datalist
-      let allOptions = searchSuggestions.querySelectorAll("option");
-
-      // Check options one by one
-      for (let option of allOptions) {
-        let optionText = option.value;
-
-        // If option text matches user input exactly
-        if (optionText === typedText) {
-          // Found match! Retrieve the hidden artist ID
-          let artistId = option.getAttribute("data-artist-id");
-
-          // Redirect user to artist details page using this ID
-          if (artistId) {
-            window.location.href = "/artist?id=" + artistId;
-          }
-          return;
-        }
-      }
-    }
-
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       fetchArtists();
       fetchSuggestions(query);
     }, 250);
+  });
+
+  // Hide suggestions dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!searchInput.contains(e.target) && !searchSuggestions.contains(e.target)) {
+      searchSuggestions.classList.remove("show");
+    }
+  });
+
+  // Show suggestions dropdown on focus if input has value
+  searchInput.addEventListener("focus", () => {
+    if (searchInput.value.trim().length > 0 && searchSuggestions.children.length > 0) {
+      searchSuggestions.classList.add("show");
+    }
   });
 }
 
@@ -93,6 +81,12 @@ if (filtersForm) {
       scopeButtons.forEach(b => b.classList.remove("active"));
       const allBtn = document.querySelector('.scope-btn[data-scope="all"]');
       if (allBtn) allBtn.classList.add("active");
+
+      // Hide suggestions
+      if (searchSuggestions) {
+        searchSuggestions.innerHTML = "";
+        searchSuggestions.classList.remove("show");
+      }
 
       fetchArtists();
     });
@@ -177,6 +171,7 @@ async function fetchSuggestions(query) {
 
   if (query.length === 0) {
     searchSuggestions.innerHTML = "";
+    searchSuggestions.classList.remove("show");
     return;
   }
 
@@ -197,24 +192,64 @@ async function fetchSuggestions(query) {
     // Parse response body as JSON
     let suggestionsList = await response.json();
 
-    // STEP 3: Construct the HTML options list
+    if (suggestionsList.length === 0) {
+      searchSuggestions.innerHTML = "";
+      searchSuggestions.classList.remove("show");
+      return;
+    }
+
+    // STEP 3: Construct the HTML suggestions list
     let newHtml = "";
 
     // Loop through each suggestion sent by the server
     for (let item of suggestionsList) {
-      let text = item.displayText; // E.g., "Phil Collins - member"
-      let id = item.artistId;      // E.g., 10
+      let val = item.value;      // E.g., "Phil Collins"
+      let type = item.type;      // E.g., "member"
+      let info = item.info;      // E.g., "Genesis"
+      let id = item.artistId;    // E.g., 10
 
-      // Append a formatted option tag
-      newHtml = newHtml + `<option value="${escapeHtml(text)}" data-artist-id="${id}"></option>`;
+      // Highlight the matching part in the value (case-insensitive)
+      let highlightedVal = escapeHtml(val);
+      if (query) {
+        const escapedQuery = escapeRegExp(query);
+        const regex = new RegExp(`(${escapedQuery})`, "gi");
+        highlightedVal = escapeHtml(val).replace(regex, '<span class="match-highlight">$1</span>');
+      }
+
+      let infoSpan = info ? ` <span class="match-info">(${escapeHtml(info)})</span>` : "";
+
+      newHtml += `
+        <div class="suggestion-item" data-artist-id="${id}">
+          <div class="suggestion-left">
+            <span class="match-value">${highlightedVal}</span>${infoSpan}
+          </div>
+          <span class="match-type">${escapeHtml(type)}</span>
+        </div>
+      `;
     }
 
     // STEP 4: Render the suggestions list to page
     searchSuggestions.innerHTML = newHtml;
+    searchSuggestions.classList.add("show");
+
+    // Add click listeners to items to navigate directly to the artist detail
+    const items = searchSuggestions.querySelectorAll(".suggestion-item");
+    items.forEach(item => {
+      item.addEventListener("click", () => {
+        const artistId = item.getAttribute("data-artist-id");
+        if (artistId) {
+          window.location.href = "/artist?id=" + artistId;
+        }
+      });
+    });
 
   } catch (error) {
     console.error("Error loading suggestions:", error);
   }
+}
+
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function escapeHtml(value) {

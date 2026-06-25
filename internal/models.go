@@ -86,8 +86,10 @@ type ProcessedArtist struct {
 	CleanLocations []string // Lowercased concert locations with underscores and hyphens replaced with spaces.
 }
 
-// SearchSuggestion represents a single pre-formatted search autocomplete suggestion.
+// SearchSuggestion represents a single structured search autocomplete suggestion.
 type SearchSuggestion struct {
-	DisplayText string `json:"displayText"` // e.g., "Freddie Mercury - member"
-	ArtistID    int    `json:"artistId"`    // Matches the corresponding Artist ID for navigation.
+	Value    string `json:"value"`    // e.g., "Freddie Mercury"
+	Type     string `json:"type"`     // e.g., "member"
+	Info     string `json:"info"`     // e.g., "Queen"
+	ArtistID int    `json:"artistId"` // Matches the corresponding Artist ID for navigation.
 }

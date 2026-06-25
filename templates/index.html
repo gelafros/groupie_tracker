@@ -14,9 +14,10 @@
   </header>
   <main class="home-main">
     <section class="search-section">
-      <input class="search-input" type="text" id="searchInput" aria-label="Search artists" placeholder="Search artists…"
-        list="searchSuggestions" autocomplete="off">
-      <datalist class="suggestions" id="searchSuggestions"></datalist>
+      <div class="search-input-wrapper">
+        <input class="search-input" type="text" id="searchInput" aria-label="Search artists" placeholder="Search artists…" autocomplete="off">
+        <div class="suggestions-dropdown" id="searchSuggestions"></div>
+      </div>
 
       <div class="search-scope-container">
         <button type="button" class="scope-btn active" data-scope="all">All</button>
