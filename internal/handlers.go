@@ -176,9 +176,59 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	for _, pa := range processedArtists {
 		artist := pa.Artist
 
-		// Apply name search if a query was provided
-		if query != "" && !strings.Contains(strings.ToLower(artist.Name), query) {
-			continue
+		// Apply search logic for the 5 search cases if query is provided
+		if query != "" {
+			matched := false
+
+			// 1. artist/band name
+			if strings.Contains(strings.ToLower(artist.Name), query) {
+				matched = true
+			}
+
+			// 2. members
+			if !matched {
+				for _, m := range artist.Members {
+					if strings.Contains(strings.ToLower(m), query) {
+						matched = true
+						break
+					}
+				}
+			}
+
+			// 3. locations
+			if !matched {
+				if locs, exists := cachedLocationMap[artist.ID]; exists {
+					for _, loc := range locs.Locations {
+						locLower := strings.ToLower(loc)
+						// Compare with raw location name (with hyphens/underscores) and clean version (with spaces)
+						locClean := strings.ReplaceAll(strings.ReplaceAll(locLower, "_", " "), "-", " ")
+						queryClean := strings.ReplaceAll(strings.ReplaceAll(query, "_", " "), "-", " ")
+						if strings.Contains(locLower, query) || strings.Contains(locClean, queryClean) {
+							matched = true
+							break
+						}
+					}
+				}
+			}
+
+			// 4. first album date
+			if !matched {
+				if strings.Contains(strings.ToLower(artist.FirstAlbum), query) {
+					matched = true
+				}
+			}
+
+			// 5. creation date
+			if !matched {
+				creationDateStr := strconv.Itoa(artist.CreationDate)
+				if strings.Contains(creationDateStr, query) {
+					matched = true
+				}
+			}
+
+			if !matched {
+				continue
+			}
 		}
 
 		// 1. Filter by Creation Date (numeric comparison)
@@ -247,50 +297,77 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var suggestions []SearchSuggestion
+	seen := make(map[string]bool)
+
 	for _, pa := range processedArtists {
 		// 1. Match by Artist/Band Name
 		if strings.Contains(strings.ToLower(pa.Artist.Name), query) {
-			suggestions = append(suggestions, SearchSuggestion{
-				DisplayText: pa.Artist.Name + " - artist/band",
-				ArtistID:    pa.Artist.ID,
-			})
+			text := pa.Artist.Name + " - artist/band"
+			if !seen[text] {
+				seen[text] = true
+				suggestions = append(suggestions, SearchSuggestion{
+					DisplayText: text,
+					ArtistID:    pa.Artist.ID,
+				})
+			}
 		}
 
 		// 2. Match by Members
 		for _, member := range pa.Artist.Members {
 			if strings.Contains(strings.ToLower(member), query) {
-				suggestions = append(suggestions, SearchSuggestion{
-					DisplayText: member + " - member (" + pa.Artist.Name + ")",
-					ArtistID:    pa.Artist.ID,
-				})
+				text := member + " - member (" + pa.Artist.Name + ")"
+				if !seen[text] {
+					seen[text] = true
+					suggestions = append(suggestions, SearchSuggestion{
+						DisplayText: text,
+						ArtistID:    pa.Artist.ID,
+					})
+				}
 			}
 		}
 
 		// 3. Match by Locations
-		for _, loc := range pa.BandInfo.Locations {
-			if strings.Contains(strings.ToLower(loc), query) {
-				suggestions = append(suggestions, SearchSuggestion{
-					DisplayText: loc + " - location (" + pa.Artist.Name + ")",
-					ArtistID:    pa.Artist.ID,
-				})
+		if locs, exists := cachedLocationMap[pa.Artist.ID]; exists {
+			for _, loc := range locs.Locations {
+				locLower := strings.ToLower(loc)
+				locClean := strings.ReplaceAll(strings.ReplaceAll(locLower, "_", " "), "-", " ")
+				queryClean := strings.ReplaceAll(strings.ReplaceAll(query, "_", " "), "-", " ")
+				if strings.Contains(locLower, query) || strings.Contains(locClean, queryClean) {
+					text := loc + " - location (" + pa.Artist.Name + ")"
+					if !seen[text] {
+						seen[text] = true
+						suggestions = append(suggestions, SearchSuggestion{
+							DisplayText: text,
+							ArtistID:    pa.Artist.ID,
+						})
+					}
+				}
 			}
 		}
 
 		// 4. Match by First Album Date
 		if strings.Contains(strings.ToLower(pa.Artist.FirstAlbum), query) {
-			suggestions = append(suggestions, SearchSuggestion{
-				DisplayText: pa.Artist.FirstAlbum + " - first album date (" + pa.Artist.Name + ")",
-				ArtistID:    pa.Artist.ID,
-			})
+			text := pa.Artist.FirstAlbum + " - first album date (" + pa.Artist.Name + ")"
+			if !seen[text] {
+				seen[text] = true
+				suggestions = append(suggestions, SearchSuggestion{
+					DisplayText: text,
+					ArtistID:    pa.Artist.ID,
+				})
+			}
 		}
 
 		// 5. Match by Creation Date
 		creationDateStr := strconv.Itoa(pa.Artist.CreationDate)
 		if strings.Contains(creationDateStr, query) {
-			suggestions = append(suggestions, SearchSuggestion{
-				DisplayText: creationDateStr + " - creation date (" + pa.Artist.Name + ")",
-				ArtistID:    pa.Artist.ID,
-			})
+			text := creationDateStr + " - creation date (" + pa.Artist.Name + ")"
+			if !seen[text] {
+				seen[text] = true
+				suggestions = append(suggestions, SearchSuggestion{
+					DisplayText: text,
+					ArtistID:    pa.Artist.ID,
+				})
+			}
 		}
 	}
 
@@ -305,5 +382,3 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
-
