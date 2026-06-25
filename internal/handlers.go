@@ -168,8 +168,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse standard filters (year ranges, members, locations)
 	filters := ParseFilters(r)
 
-	// Grab the search query for the artist name and normalize it to lowercase
+	// Grab the search query and scope and normalize to lowercase
 	query := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+	scope := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("scope")))
 
 	var filteredArtists []Artist
 
@@ -182,12 +183,14 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			matched := false
 
 			// 1. artist/band name
-			if strings.Contains(strings.ToLower(artist.Name), query) {
-				matched = true
+			if scope == "" || scope == "all" || scope == "artist/band" {
+				if strings.Contains(strings.ToLower(artist.Name), query) {
+					matched = true
+				}
 			}
 
 			// 2. members
-			if !matched {
+			if !matched && (scope == "" || scope == "all" || scope == "member") {
 				for _, m := range artist.Members {
 					if strings.Contains(strings.ToLower(m), query) {
 						matched = true
@@ -197,7 +200,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// 3. locations
-			if !matched {
+			if !matched && (scope == "" || scope == "all" || scope == "location") {
 				if locs, exists := cachedLocationMap[artist.ID]; exists {
 					for _, loc := range locs.Locations {
 						locLower := strings.ToLower(loc)
@@ -213,14 +216,14 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// 4. first album date
-			if !matched {
+			if !matched && (scope == "" || scope == "all" || scope == "first album date") {
 				if strings.Contains(strings.ToLower(artist.FirstAlbum), query) {
 					matched = true
 				}
 			}
 
 			// 5. creation date
-			if !matched {
+			if !matched && (scope == "" || scope == "all" || scope == "creation date") {
 				creationDateStr := strconv.Itoa(artist.CreationDate)
 				if strings.Contains(creationDateStr, query) {
 					matched = true
@@ -291,6 +294,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 // suggestionsHandler handles asynchronous requests for suggestions
 func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 	query := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+	scope := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("scope")))
 	if query == "" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]SearchSuggestion{})
@@ -308,104 +312,114 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, pa := range processedArtists {
 		// 1. Match by Artist/Band Name
-		if strings.Contains(strings.ToLower(pa.Artist.Name), query) {
-			text := pa.Artist.Name + " - artist/band"
-			if !seen[text] {
-				seen[text] = true
-				idx := strings.Index(strings.ToLower(pa.Artist.Name), query)
-				tempSuggestions = append(tempSuggestions, sortedSuggestion{
-					suggestion: SearchSuggestion{
-						DisplayText: text,
-						ArtistID:    pa.Artist.ID,
-					},
-					matchIndex: idx,
-					matchValue: pa.Artist.Name,
-				})
-			}
-		}
-
-		// 2. Match by Members
-		for _, member := range pa.Artist.Members {
-			if strings.Contains(strings.ToLower(member), query) {
-				text := member + " - member (" + pa.Artist.Name + ")"
+		if scope == "" || scope == "all" || scope == "artist/band" {
+			if strings.Contains(strings.ToLower(pa.Artist.Name), query) {
+				text := pa.Artist.Name + " - artist/band"
 				if !seen[text] {
 					seen[text] = true
-					idx := strings.Index(strings.ToLower(member), query)
+					idx := strings.Index(strings.ToLower(pa.Artist.Name), query)
 					tempSuggestions = append(tempSuggestions, sortedSuggestion{
 						suggestion: SearchSuggestion{
 							DisplayText: text,
 							ArtistID:    pa.Artist.ID,
 						},
 						matchIndex: idx,
-						matchValue: member,
+						matchValue: pa.Artist.Name,
 					})
 				}
 			}
 		}
 
-		// 3. Match by Locations
-		if locs, exists := cachedLocationMap[pa.Artist.ID]; exists {
-			for _, loc := range locs.Locations {
-				locLower := strings.ToLower(loc)
-				locClean := strings.ReplaceAll(strings.ReplaceAll(locLower, "_", " "), "-", " ")
-				queryClean := strings.ReplaceAll(strings.ReplaceAll(query, "_", " "), "-", " ")
-
-				idx := -1
-				if strings.Contains(locLower, query) {
-					idx = strings.Index(locLower, query)
-				} else if strings.Contains(locClean, queryClean) {
-					idx = strings.Index(locClean, queryClean)
-				}
-
-				if idx != -1 {
-					text := loc + " - location (" + pa.Artist.Name + ")"
+		// 2. Match by Members
+		if scope == "" || scope == "all" || scope == "member" {
+			for _, member := range pa.Artist.Members {
+				if strings.Contains(strings.ToLower(member), query) {
+					text := member + " - member (" + pa.Artist.Name + ")"
 					if !seen[text] {
 						seen[text] = true
+						idx := strings.Index(strings.ToLower(member), query)
 						tempSuggestions = append(tempSuggestions, sortedSuggestion{
 							suggestion: SearchSuggestion{
 								DisplayText: text,
 								ArtistID:    pa.Artist.ID,
 							},
 							matchIndex: idx,
-							matchValue: loc,
+							matchValue: member,
 						})
 					}
 				}
 			}
 		}
 
+		// 3. Match by Locations
+		if scope == "" || scope == "all" || scope == "location" {
+			if locs, exists := cachedLocationMap[pa.Artist.ID]; exists {
+				for _, loc := range locs.Locations {
+					locLower := strings.ToLower(loc)
+					locClean := strings.ReplaceAll(strings.ReplaceAll(locLower, "_", " "), "-", " ")
+					queryClean := strings.ReplaceAll(strings.ReplaceAll(query, "_", " "), "-", " ")
+
+					idx := -1
+					if strings.Contains(locLower, query) {
+						idx = strings.Index(locLower, query)
+					} else if strings.Contains(locClean, queryClean) {
+						idx = strings.Index(locClean, queryClean)
+					}
+
+					if idx != -1 {
+						text := loc + " - location (" + pa.Artist.Name + ")"
+						if !seen[text] {
+							seen[text] = true
+							tempSuggestions = append(tempSuggestions, sortedSuggestion{
+								suggestion: SearchSuggestion{
+									DisplayText: text,
+									ArtistID:    pa.Artist.ID,
+								},
+								matchIndex: idx,
+								matchValue: loc,
+							})
+						}
+					}
+				}
+			}
+		}
+
 		// 4. Match by First Album Date
-		if strings.Contains(strings.ToLower(pa.Artist.FirstAlbum), query) {
-			text := pa.Artist.FirstAlbum + " - first album date (" + pa.Artist.Name + ")"
-			if !seen[text] {
-				seen[text] = true
-				idx := strings.Index(strings.ToLower(pa.Artist.FirstAlbum), query)
-				tempSuggestions = append(tempSuggestions, sortedSuggestion{
-					suggestion: SearchSuggestion{
-						DisplayText: text,
-						ArtistID:    pa.Artist.ID,
-					},
-					matchIndex: idx,
-					matchValue: pa.Artist.FirstAlbum,
-				})
+		if scope == "" || scope == "all" || scope == "first album date" {
+			if strings.Contains(strings.ToLower(pa.Artist.FirstAlbum), query) {
+				text := pa.Artist.FirstAlbum + " - first album date (" + pa.Artist.Name + ")"
+				if !seen[text] {
+					seen[text] = true
+					idx := strings.Index(strings.ToLower(pa.Artist.FirstAlbum), query)
+					tempSuggestions = append(tempSuggestions, sortedSuggestion{
+						suggestion: SearchSuggestion{
+							DisplayText: text,
+							ArtistID:    pa.Artist.ID,
+						},
+						matchIndex: idx,
+						matchValue: pa.Artist.FirstAlbum,
+					})
+				}
 			}
 		}
 
 		// 5. Match by Creation Date
-		creationDateStr := strconv.Itoa(pa.Artist.CreationDate)
-		if strings.Contains(creationDateStr, query) {
-			text := creationDateStr + " - creation date (" + pa.Artist.Name + ")"
-			if !seen[text] {
-				seen[text] = true
-				idx := strings.Index(creationDateStr, query)
-				tempSuggestions = append(tempSuggestions, sortedSuggestion{
-					suggestion: SearchSuggestion{
-						DisplayText: text,
-						ArtistID:    pa.Artist.ID,
-					},
-					matchIndex: idx,
-					matchValue: creationDateStr,
-				})
+		if scope == "" || scope == "all" || scope == "creation date" {
+			creationDateStr := strconv.Itoa(pa.Artist.CreationDate)
+			if strings.Contains(creationDateStr, query) {
+				text := creationDateStr + " - creation date (" + pa.Artist.Name + ")"
+				if !seen[text] {
+					seen[text] = true
+					idx := strings.Index(creationDateStr, query)
+					tempSuggestions = append(tempSuggestions, sortedSuggestion{
+						suggestion: SearchSuggestion{
+							DisplayText: text,
+							ArtistID:    pa.Artist.ID,
+						},
+						matchIndex: idx,
+						matchValue: creationDateStr,
+					})
+				}
 			}
 		}
 	}

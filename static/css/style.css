@@ -97,6 +97,37 @@ img {
   font-size: 0.9rem;
 }
 
+.search-scope-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.scope-btn {
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.scope-btn:hover {
+  color: var(--text);
+  border-color: #555;
+}
+
+.scope-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-weight: 500;
+  box-shadow: 0 0 8px rgba(230, 57, 70, 0.4);
+}
+
 /* ---------- Filters form ---------- */
 .filters-form {
   background: var(--surface);

@@ -4,6 +4,25 @@ const artistsGrid = document.getElementById("artistsGrid");
 const filtersForm = document.querySelector(".filters-form");
 const searchSuggestions = document.getElementById("searchSuggestions");
 
+let activeScope = "all";
+
+// Setup scope button listeners
+const scopeButtons = document.querySelectorAll(".scope-btn");
+scopeButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    scopeButtons.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeScope = btn.getAttribute("data-scope");
+    
+    // Immediately refresh suggestions and filtered artists on scope change
+    if (searchInput) {
+      const query = searchInput.value.trim();
+      fetchArtists();
+      fetchSuggestions(query);
+    }
+  });
+});
+
 if (searchInput && searchResults && artistsGrid) {
   let debounceTimer;
 
@@ -13,7 +32,6 @@ if (searchInput && searchResults && artistsGrid) {
 
     // Check if the search suggestions element exists
     if (searchSuggestions) {
-
       // Get the current text typed by the user
       let typedText = searchInput.value;
 
@@ -22,12 +40,10 @@ if (searchInput && searchResults && artistsGrid) {
 
       // Check options one by one
       for (let option of allOptions) {
-
         let optionText = option.value;
 
         // If option text matches user input exactly
         if (optionText === typedText) {
-
           // Found match! Retrieve the hidden artist ID
           let artistId = option.getAttribute("data-artist-id");
 
@@ -35,7 +51,6 @@ if (searchInput && searchResults && artistsGrid) {
           if (artistId) {
             window.location.href = "/artist?id=" + artistId;
           }
-
           return;
         }
       }
@@ -48,7 +63,6 @@ if (searchInput && searchResults && artistsGrid) {
     }, 250);
   });
 }
-
 
 if (filtersForm) {
   // Intercept the filter form submission to stop the page reload
@@ -73,6 +87,13 @@ if (filtersForm) {
       e.preventDefault(); // Prevent standard link navigation
       filtersForm.reset();
       if (searchInput) searchInput.value = "";
+      
+      // Reset scope back to all
+      activeScope = "all";
+      scopeButtons.forEach(b => b.classList.remove("active"));
+      const allBtn = document.querySelector('.scope-btn[data-scope="all"]');
+      if (allBtn) allBtn.classList.add("active");
+
       fetchArtists();
     });
   }
@@ -86,6 +107,11 @@ async function fetchArtists() {
   const query = searchInput ? searchInput.value.trim() : "";
   if (query) {
     params.set("q", query);
+  }
+
+  // Add the search scope if not "all"
+  if (activeScope && activeScope !== "all") {
+    params.set("scope", activeScope);
   }
 
   try {
@@ -158,6 +184,9 @@ async function fetchSuggestions(query) {
   try {
     // Construct URL with URL-encoded query parameter
     let url = "/api/suggestions?q=" + encodeURIComponent(query);
+    if (activeScope && activeScope !== "all") {
+      url += "&scope=" + encodeURIComponent(activeScope);
+    }
 
     // Send request to server and await response
     let response = await fetch(url);

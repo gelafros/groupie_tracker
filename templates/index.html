@@ -18,6 +18,15 @@
         list="searchSuggestions" autocomplete="off">
       <datalist class="suggestions" id="searchSuggestions"></datalist>
 
+      <div class="search-scope-container">
+        <button type="button" class="scope-btn active" data-scope="all">All</button>
+        <button type="button" class="scope-btn" data-scope="artist/band">Bands</button>
+        <button type="button" class="scope-btn" data-scope="member">Members</button>
+        <button type="button" class="scope-btn" data-scope="location">Locations</button>
+        <button type="button" class="scope-btn" data-scope="first album date">First Album</button>
+        <button type="button" class="scope-btn" data-scope="creation date">Creation Date</button>
+      </div>
+
       <div class="search-results" id="searchResults" aria-live="polite"></div>
     </section>
     <form method="GET" action="/" class="filters-form">
