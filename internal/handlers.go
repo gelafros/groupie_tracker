@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -296,7 +297,13 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var suggestions []SearchSuggestion
+	type sortedSuggestion struct {
+		suggestion SearchSuggestion
+		matchIndex int
+		matchValue string
+	}
+
+	var tempSuggestions []sortedSuggestion
 	seen := make(map[string]bool)
 
 	for _, pa := range processedArtists {
@@ -305,9 +312,14 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 			text := pa.Artist.Name + " - artist/band"
 			if !seen[text] {
 				seen[text] = true
-				suggestions = append(suggestions, SearchSuggestion{
-					DisplayText: text,
-					ArtistID:    pa.Artist.ID,
+				idx := strings.Index(strings.ToLower(pa.Artist.Name), query)
+				tempSuggestions = append(tempSuggestions, sortedSuggestion{
+					suggestion: SearchSuggestion{
+						DisplayText: text,
+						ArtistID:    pa.Artist.ID,
+					},
+					matchIndex: idx,
+					matchValue: pa.Artist.Name,
 				})
 			}
 		}
@@ -318,9 +330,14 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 				text := member + " - member (" + pa.Artist.Name + ")"
 				if !seen[text] {
 					seen[text] = true
-					suggestions = append(suggestions, SearchSuggestion{
-						DisplayText: text,
-						ArtistID:    pa.Artist.ID,
+					idx := strings.Index(strings.ToLower(member), query)
+					tempSuggestions = append(tempSuggestions, sortedSuggestion{
+						suggestion: SearchSuggestion{
+							DisplayText: text,
+							ArtistID:    pa.Artist.ID,
+						},
+						matchIndex: idx,
+						matchValue: member,
 					})
 				}
 			}
@@ -332,13 +349,25 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 				locLower := strings.ToLower(loc)
 				locClean := strings.ReplaceAll(strings.ReplaceAll(locLower, "_", " "), "-", " ")
 				queryClean := strings.ReplaceAll(strings.ReplaceAll(query, "_", " "), "-", " ")
-				if strings.Contains(locLower, query) || strings.Contains(locClean, queryClean) {
+
+				idx := -1
+				if strings.Contains(locLower, query) {
+					idx = strings.Index(locLower, query)
+				} else if strings.Contains(locClean, queryClean) {
+					idx = strings.Index(locClean, queryClean)
+				}
+
+				if idx != -1 {
 					text := loc + " - location (" + pa.Artist.Name + ")"
 					if !seen[text] {
 						seen[text] = true
-						suggestions = append(suggestions, SearchSuggestion{
-							DisplayText: text,
-							ArtistID:    pa.Artist.ID,
+						tempSuggestions = append(tempSuggestions, sortedSuggestion{
+							suggestion: SearchSuggestion{
+								DisplayText: text,
+								ArtistID:    pa.Artist.ID,
+							},
+							matchIndex: idx,
+							matchValue: loc,
 						})
 					}
 				}
@@ -350,9 +379,14 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 			text := pa.Artist.FirstAlbum + " - first album date (" + pa.Artist.Name + ")"
 			if !seen[text] {
 				seen[text] = true
-				suggestions = append(suggestions, SearchSuggestion{
-					DisplayText: text,
-					ArtistID:    pa.Artist.ID,
+				idx := strings.Index(strings.ToLower(pa.Artist.FirstAlbum), query)
+				tempSuggestions = append(tempSuggestions, sortedSuggestion{
+					suggestion: SearchSuggestion{
+						DisplayText: text,
+						ArtistID:    pa.Artist.ID,
+					},
+					matchIndex: idx,
+					matchValue: pa.Artist.FirstAlbum,
 				})
 			}
 		}
@@ -363,12 +397,36 @@ func suggestionsHandler(w http.ResponseWriter, r *http.Request) {
 			text := creationDateStr + " - creation date (" + pa.Artist.Name + ")"
 			if !seen[text] {
 				seen[text] = true
-				suggestions = append(suggestions, SearchSuggestion{
-					DisplayText: text,
-					ArtistID:    pa.Artist.ID,
+				idx := strings.Index(creationDateStr, query)
+				tempSuggestions = append(tempSuggestions, sortedSuggestion{
+					suggestion: SearchSuggestion{
+						DisplayText: text,
+						ArtistID:    pa.Artist.ID,
+					},
+					matchIndex: idx,
+					matchValue: creationDateStr,
 				})
 			}
 		}
+	}
+
+	// Sort suggestions: first by matchIndex (so prefix matches are shown first),
+	// second by matched value alphabetically, third by display text.
+	sort.Slice(tempSuggestions, func(i, j int) bool {
+		if tempSuggestions[i].matchIndex != tempSuggestions[j].matchIndex {
+			return tempSuggestions[i].matchIndex < tempSuggestions[j].matchIndex
+		}
+		valI := strings.ToLower(tempSuggestions[i].matchValue)
+		valJ := strings.ToLower(tempSuggestions[j].matchValue)
+		if valI != valJ {
+			return valI < valJ
+		}
+		return strings.ToLower(tempSuggestions[i].suggestion.DisplayText) < strings.ToLower(tempSuggestions[j].suggestion.DisplayText)
+	})
+
+	suggestions := make([]SearchSuggestion, len(tempSuggestions))
+	for i, ts := range tempSuggestions {
+		suggestions[i] = ts.suggestion
 	}
 
 	// Avoid returning null in JSON by ensuring it's an empty slice if nil
