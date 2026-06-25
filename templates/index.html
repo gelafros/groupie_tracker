@@ -4,18 +4,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Explore music artists and bands - search, filter, and discover concert locations with Groupie Tracker.">
   <title>{{.Title}}</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 
 <body>
   <header class="site-header">
-    <h1 class="site-title">Groupie Tracker</h1>
+    <h1 class="site-title"><a href="/">Groupie Tracker</a></h1>
   </header>
   <main class="home-main">
     <section class="search-section">
       <div class="search-input-wrapper">
-        <input class="search-input" type="text" id="searchInput" aria-label="Search artists" placeholder="Search artists…" autocomplete="off">
+        <input class="search-input" type="text" id="searchInput" aria-label="Search artists" placeholder="Search artists…" autocomplete="off" title="Press / to focus">
         <div class="suggestions-dropdown" id="searchSuggestions"></div>
       </div>
 
@@ -89,6 +90,9 @@
       {{end}}
     </section>
   </main>
+  <footer class="site-footer">
+    <p>&copy; Groupie Tracker. Data from <a href="https://groupietrackers.herokuapp.com/api" target="_blank" rel="noopener">Groupie Trackers API</a>.</p>
+  </footer>
   <script src="/static/javascript/js.js"></script>
 </body>
 
