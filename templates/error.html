@@ -3,19 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{.Title}} - An error occurred while using Groupie Tracker.">
   <title>{{.Title}}</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
   <header class="site-header">
-    <h1 class="site-title">Groupie Tracker</h1>
+    <h1 class="site-title"><a href="/">Groupie Tracker</a></h1>
   </header>
   <main class="error-main">
-    <h1 class="error-code">{{.Status}}</h1>
+    <div class="error-glow">
+      <h1 class="error-code">{{.Status}}</h1>
+    </div>
     <h2 class="error-title">{{.Title}}</h2>
     <p class="error-message">{{.Message}}</p>
     <p class="error-tagline">Something went wrong!</p>
     <a href="/" class="error-home-link">Go Home</a>
   </main>
+  <footer class="site-footer">
+    <p>&copy; 2025 Groupie Tracker. Data from <a href="https://groupietrackers.herokuapp.com/api" target="_blank" rel="noopener">Groupie Trackers API</a>.</p>
+  </footer>
 </body>
 </html>
