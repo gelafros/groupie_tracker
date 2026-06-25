@@ -260,3 +260,11 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 }
+
+// Keyboard shortcut: Press "/" to focus the search input (Schneiderman Rule #2)
+document.addEventListener("keydown", (e) => {
+  if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) {
+    e.preventDefault();
+    if (searchInput) searchInput.focus();
+  }
+});
