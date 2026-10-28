@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Package-level variables to hold cached API data
@@ -156,8 +157,17 @@ func StartServer() {
 	fileserver := http.FileServer(http.Dir("./static"))
 	handler.Handle("/static/", http.StripPrefix("/static", fileserver))
 
+	srv := &http.Server{
+		Addr:              port,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
 	// Start the HTTP server; log.Fatal will catch and log any errors if the server fails to start
-	if err := http.ListenAndServe(port, handler); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }

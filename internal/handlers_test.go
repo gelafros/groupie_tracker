@@ -14,7 +14,7 @@ import (
 // resolve correctly and that handlers have data to operate on.
 func TestMain(m *testing.M) {
 	// Change to the project root so that template paths like "templates/error.html" resolve.
-	if err := os.Chdir("/home/student/groupie-tracker-search-bar"); err != nil {
+	if err := os.Chdir(".."); err != nil {
 		panic("failed to chdir to project root: " + err.Error())
 	}
 

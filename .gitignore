@@ -1,0 +1,6 @@
+*.test
+*.out
+.env
+.DS_Store
+.vscode/
+.idea/
